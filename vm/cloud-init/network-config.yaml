@@ -1,0 +1,20 @@
+version: 2
+
+ethernets:
+  nic0:
+    match:
+      driver: virtio_net
+
+    dhcp4: false
+
+    addresses:
+      - __IP__/24
+
+    routes:
+      - to: default
+        via: __GATEWAY__
+
+    nameservers:
+      addresses:
+        - 1.1.1.1
+        - 8.8.8.8
