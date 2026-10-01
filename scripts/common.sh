@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ROOT="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-source $PROJECT_ROOT/config.env
+
 
 log() {
     echo "[INFO] $*"
