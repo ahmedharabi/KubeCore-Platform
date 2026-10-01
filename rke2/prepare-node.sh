@@ -2,6 +2,11 @@
 
 set -euo pipefail
 
+
+echo "Waiting for cloud-init / apt to finish..."
+
+cloud-init status --wait
+
 swapoff -a
 
 sed -i '/ swap / s/^/#/' /etc/fstab
@@ -11,7 +16,6 @@ apt-get update
 apt-get install -y \
     curl \
     ca-certificates \
-    apparmor-parser \
     chrony \
     open-iscsi
 
