@@ -2,7 +2,9 @@
 
 set -euo pipefail
 
-source "$(dirname "$0")/common.sh"
+PROJECT_ROOT="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+source "$PROJECT_ROOT/scripts/common.sh"
+source "$PROJECT_ROOT/config.env"
 
 for VM in \
     "$CP_NAME" \

@@ -2,30 +2,48 @@
 
 set -euo pipefail
 
-source "$(dirname "$0")/common.sh"
+PROJECT_ROOT="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+source "$PROJECT_ROOT/scripts/common.sh"
+source "$PROJECT_ROOT/config.env"
 
 for VM in \
-    "$CP_NAME" \
+    "$WORKER2_NAME" \
     "$WORKER1_NAME" \
-    "$WORKER2_NAME"
+    "$CP_NAME"
 do
 
     if ! vm_exists "$VM"; then
-        die "VM does not exist: $VM"
+        warn "$VM does not exist."
+        continue
     fi
 
-    if ! vm_running "$VM"; then
-        log "Starting $VM..."
-        virsh start "$VM"
-    else
-        log "$VM already running."
+    if vm_stopped "$VM"; then
+        log "$VM already stopped."
+        continue
     fi
+
+    log "Shutting down $VM..."
+
+    virsh shutdown "$VM"
 done
 
-wait_for_ssh "$CP_IP"
-wait_for_ssh "$WORKER1_IP"
-wait_for_ssh "$WORKER2_IP"
+for VM in \
+    "$WORKER2_NAME" \
+    "$WORKER1_NAME" \
+    "$CP_NAME"
+do
 
-log "Cluster started."
+    log "Waiting for $VM to stop..."
 
-"$PROJECT_ROOT/scripts/status.sh"
+    for _ in {1..30}; do
+
+        if vm_stopped "$VM"; then
+            break
+        fi
+
+        sleep 2
+    done
+
+done
+
+log "Cluster stopped."
