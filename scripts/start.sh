@@ -30,4 +30,4 @@ wait_for_ssh "$WORKER2_IP"
 
 log "Cluster started."
 
-"$PROJECT_ROOT/scripts/status.sh"
+#"$PROJECT_ROOT/scripts/status.sh"
