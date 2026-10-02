@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage: kcluster <check|create|start|stop>
+
+PROJECT_ROOT="$(dirname "$(realpath "$0")")"
+SCRIPT="$PROJECT_ROOT/scripts/${1:-}.sh"
+
+if [[ $# -eq 0 || ! -f "$SCRIPT" ]]; then
+    echo "Usage: kcluster <check|create|start|stop>"
+    exit 1
+fi
+
+bash "$SCRIPT"
