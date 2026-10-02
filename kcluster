@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Usage: kcluster <check|create|start|stop>
 
-PROJECT_ROOT="$(dirname "$(realpath "$0")")"
+export PROJECT_ROOT="$(dirname "$(realpath "$0")")"
 source "$PROJECT_ROOT/scripts/common.sh"
 source "$PROJECT_ROOT/config.env"
 SCRIPT="$PROJECT_ROOT/scripts/${1:-}.sh"
