@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NODE=$1
+NODE="${1:-}"
 if [[ "$NODE" == "cp1" ]]; then
   echo "SSH into control plane 1"
   IP="192.168.50.10"
