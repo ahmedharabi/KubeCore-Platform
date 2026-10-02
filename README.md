@@ -109,11 +109,16 @@ kcluster stop     # shut down the workers, then the control plane
 kcluster start    # boot everything again
 ```
 
+SSH into a node with `cp1`, `wk1` or `wk2`:
+
+```bash
+kcluster ssh cp1
+```
+
 ### kubectl from the host
 
 ```bash
-scp $SSH_USER@192.168.50.10:/etc/rancher/rke2/rke2.yaml ~/.kube/kubecore.yaml
-sed -i 's/127.0.0.1/192.168.50.10/' ~/.kube/kubecore.yaml
+kcluster kubeconfig
 export KUBECONFIG=~/.kube/kubecore.yaml
 kubectl get nodes
 ```
@@ -123,7 +128,7 @@ kubectl get nodes
 ```text
 kcluster          CLI wrapper, "kcluster <command>" runs scripts/<command>.sh
 config.env        cluster settings, loaded by every script
-scripts/          check / create / start / stop, plus common.sh helpers
+scripts/          check / create / start / stop / ssh / kubeconfig, plus common.sh helpers
 vm/               network and VM creation, cloud-init templates
 rke2/             node prep and RKE2 server/agent install, run on the VMs over SSH
 gitops/           Argo CD manifests (empty for now)
