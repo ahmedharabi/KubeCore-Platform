@@ -1,14 +1,14 @@
 # KubeCore
 
-A homelab Kubernetes platform built on KVM. The goal is a setup close to what you'd run in a company: VMs provisioned with cloud-init, an RKE2 cluster on top, and everything inside the cluster managed through GitOps with Argo CD.
+A production-style Kubernetes platform built on RKE2, Rancher's hardened, security-focused Kubernetes distribution. The cluster runs on KVM virtual machines provisioned with cloud-init, and everything inside it will be managed through GitOps with Argo CD.
 
-Everything is scripted in Bash, so the lab can be torn down and rebuilt at any time.
+The whole platform is scripted in Bash, so it can be rebuilt from scratch with a single command.
 
 ![Architecture](docs/architecture.png)
 
 ## What's in it
 
-The whole thing runs on one Linux host. `scripts/create.sh` sets up:
+It runs on a single Linux host. `kcluster create` sets up:
 
 - a libvirt NAT network, `rke2-lab` on `192.168.50.0/24`
 - three Ubuntu 24.04 VMs with static IPs, set up by cloud-init:
@@ -17,56 +17,96 @@ The whole thing runs on one Linux host. `scripts/create.sh` sets up:
   - `worker2` at `192.168.50.12`, an RKE2 agent
 - RKE2 on all three nodes, with the workers joined to `cp1`
 
-Each VM gets 2 vCPUs, 2 GB of RAM and a 10 GB disk. You can change this in `config.env`.
+By default the control plane gets 2 vCPUs, 4 GB of RAM and a 15 GB disk, and each worker gets 2 vCPUs, 2 GB of RAM and a 10 GB disk. You can change this in `config.env`.
 
-Planned next: Cilium, Argo CD, Longhorn, PostgreSQL, then Prometheus, Grafana and Loki for monitoring.
+
 
 ## Requirements
 
-- Linux with KVM enabled
-- libvirt, `virt-install`, `qemu-img`, `cloud-localds`
-- an SSH key at `~/.ssh/id_ed25519.pub`. It gets copied into every VM.
-- about 6 GB of free RAM
+Linux with KVM enabled and about 6 GB of free RAM.
 
-On Fedora:
+## Setup
+
+**1. Clone into `/`.** libvirt can't read files under your home directory.
 
 ```bash
-sudo dnf install @virtualization cloud-utils
-sudo systemctl enable --now libvirtd
-sudo usermod -aG libvirt "$USER"
+sudo git clone https://github.com/ahmedharabi/KubeCore-Platform.git /KubeCore-Platform
+sudo chown -R "$USER":"$USER" /KubeCore-Platform
 ```
 
-On Debian or Ubuntu, install `qemu-kvm libvirt-daemon-system virtinst qemu-utils cloud-image-utils` instead.
-
-The scripts talk to the system libvirt instance, so make sure `virsh` does too:
+**2. Add `kcluster` to your PATH.** Use `~/.zshrc` if you're on zsh.
 
 ```bash
-export LIBVIRT_DEFAULT_URI=qemu:///system
+echo 'export PATH="/KubeCore-Platform:$PATH"' >> ~/.bashrc
+echo 'export LIBVIRT_DEFAULT_URI=qemu:///system' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**3. Install the packages.**
+
+Fedora:
+
+```bash
+sudo dnf install -y \
+    @virtualization \
+    cloud-utils \
+    openssh-clients \
+    curl \
+    git
+sudo systemctl enable --now libvirtd
+```
+
+Debian / Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y \
+    qemu-system-x86 \
+    libvirt-daemon-system \
+    libvirt-clients \
+    virtinst \
+    cloud-image-utils \
+    openssh-client \
+    curl \
+    git
+sudo systemctl enable --now libvirtd
+```
+
+**4. Join the `libvirt` and `kvm` groups**, then log out and back in.
+
+```bash
+sudo usermod -aG libvirt "$USER"
+sudo usermod -aG kvm "$USER"
+```
+
+**5. Download the Ubuntu cloud image.**
+
+```bash
+mkdir -p /KubeCore-Platform/vm/images
+cd /KubeCore-Platform/vm/images
+wget https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
+```
+
+**6. Create an SSH key** if `~/.ssh/id_ed25519.pub` doesn't exist.
+
+```bash
+ssh-keygen -t ed25519
+```
+
+**7. Check the host.** Everything should show ✓.
+
+```bash
+kcluster check
 ```
 
 ## Usage
 
-Download the Ubuntu cloud image into `vm/images/`:
+Set `SSH_USER` in `config.env`, then:
 
 ```bash
-mkdir -p vm/images
-curl -L -o vm/images/noble-server-cloudimg-amd64.img \
-  https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
-```
-
-Set `SSH_USER` in `config.env`, then build the cluster:
-
-```bash
-./scripts/create.sh
-```
-
-The script creates the network and VMs, waits for SSH, prepares each node and installs RKE2. Swap is turned off, kernel modules and sysctls are set, and `open-iscsi` is installed for Longhorn later. When it finishes it prints `kubectl get nodes`.
-
-After that:
-
-```bash
-./scripts/stop.sh    # shut down the workers, then the control plane
-./scripts/start.sh   # boot everything again
+kcluster create   # network, VMs and RKE2
+kcluster stop     # shut down the workers, then the control plane
+kcluster start    # boot everything again
 ```
 
 ### kubectl from the host
@@ -78,23 +118,12 @@ export KUBECONFIG=~/.kube/kubecore.yaml
 kubectl get nodes
 ```
 
-### Starting over
-
-There's no destroy script yet, so for now remove everything by hand:
-
-```bash
-for vm in worker2 worker1 cp1; do
-  virsh destroy "$vm"
-  virsh undefine "$vm" --remove-all-storage
-done
-virsh net-destroy rke2-lab && virsh net-undefine rke2-lab
-```
-
 ## Layout
 
 ```text
-config.env        lab settings, loaded by every script
-scripts/          create / start / stop, plus common.sh helpers
+kcluster          CLI wrapper, "kcluster <command>" runs scripts/<command>.sh
+config.env        cluster settings, loaded by every script
+scripts/          check / create / start / stop, plus common.sh helpers
 vm/               network and VM creation, cloud-init templates
 rke2/             node prep and RKE2 server/agent install, run on the VMs over SSH
 gitops/           Argo CD manifests (empty for now)
