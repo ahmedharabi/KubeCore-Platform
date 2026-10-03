@@ -13,6 +13,7 @@ elif [[ "$NODE" == "wk2" ]]; then
   IP="192.168.50.12"
 else
   echo "ERROR: invalid node"
+  exit 1
 fi
 ssh "${SSH_USER}@${IP}"
 
